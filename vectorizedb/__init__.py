@@ -61,6 +61,31 @@ class Database:
             metadata = {**metadata, "__vec__": vector.tobytes(), "__idx__": idx_id}
             metadata_txn.put(key.encode("utf-8"), msgpack.packb(metadata))
 
+    def search(
+        self, vector: np.array, k: int = 10
+    ) -> List[Tuple[str, np.array, float, Dict]]:
+        """
+        Search the database for the nearest neighbors of the specified vector.
+
+        Args:
+            vector (np.array): The vector to search for.
+            k (int, optional): The number of nearest neighbors to return. Defaults to 10.
+
+        Returns:
+            List[Tuple[str, np.array, float, Dict]]: A list of tuples containing the key, vector, distance, and metadata of the nearest neighbors.
+        """
+        idx_ids, distances = self.index.knn_query(vector, k=k)
+        with self.mapping.begin() as mapping_txn, self.metadata.begin() as metadata_txn:
+            for idx_id, distance in zip(idx_ids[0], distances[0]):
+                idx_id = int(idx_id).to_bytes(4, "big")
+                key = mapping_txn.get(idx_id)
+                metadata = metadata_txn.get(key)
+                metadata = msgpack.unpackb(metadata)
+                vector = np.frombuffer(metadata["__vec__"])
+                del metadata["__vec__"]
+                del metadata["__idx__"]
+                yield key.decode("utf-8"), vector, distance, metadata
+
     def __setitem__(self, key: str, val: Union[List, Tuple]):
         if isinstance(val, tuple):
             vector, metadata = val
