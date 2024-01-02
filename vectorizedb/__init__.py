@@ -90,7 +90,7 @@ class Database:
             idx_id = mapping_txn.get(key.encode("utf-8"))
             mapping_txn.delete(key.encode("utf-8"))
             vecs_txn.delete(idx_id)
-            self.index.remove_items([int.from_bytes(idx_id, "big")])
+            self.index.mark_deleted(int.from_bytes(idx_id, "big"))
             metadata_txn.delete(key.encode("utf-8"))
 
     def __len__(self) -> int:
