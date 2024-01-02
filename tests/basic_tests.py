@@ -32,3 +32,5 @@ def test_overall_functionality():
 
         del db["test"]
         assert "test" not in db
+        assert db["test2"] is not None
+        assert "test3" not in db
