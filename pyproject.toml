@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "vectorizedb"
+version = "0.0.1"
+description = "VectorizeDB is a database for vectorized data and metadata, allowing for fast similarity search and retrieval."
+authors = ["JJ Ben-Joseph <jj@tensorspace.ai>", "Yair Benita <yair@aionlabs.com>"]
+license = "Apache"
+
+[tool.poetry.dependencies]
+python = ">3.9"
+numpy = "*"
+hnswlib = "*"
+lmdb = "*"
+msgpack = "*"
+
+[tool.poetry.dev-dependencies]
+pytest = "*"
+pytest-asyncio = "*"
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.28.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
