@@ -29,8 +29,10 @@ def test_overall_functionality():
         assert db["test2"][0] is not None
         assert db["test2"][1] is not None
         assert db["test2"][1]["test"] == "test"
+        assert len(db) == 2
 
         del db["test"]
         assert "test" not in db
         assert db["test2"] is not None
         assert "test3" not in db
+        assert len(db) == 1
