@@ -17,18 +17,18 @@ def test_overall_functionality():
     with tempfile.TemporaryDirectory() as temp_dir:
         db_path = os.path.join(temp_dir, "test_db")
         db = Database(db_path, dim=5)
-        db["test"] = np.random.rand(5)
+        db["test"] = np.array([2.0, 2.0, 2.0, 2.0, 2.0])
         assert "test" in db
         assert db["test"] is not None
         assert db["test"][0] is not None
         assert db["test"][1] is None
 
-        db["test2"] = (np.random.rand(5), {"test": "test"})
+        db["test2"] = (np.array([1.0, 1.0, 1.0, 1.0, 1.0]), {"foo": "bar"})
         assert "test2" in db
         assert db["test2"] is not None
         assert db["test2"][0] is not None
         assert db["test2"][1] is not None
-        assert db["test2"][1]["test"] == "test"
+        assert db["test2"][1]["foo"] == "bar"
         assert len(db) == 2
 
         del db["test"]
