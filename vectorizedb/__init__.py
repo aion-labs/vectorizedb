@@ -36,7 +36,6 @@ class Database:
 
         self.metadata = lmdb.open(metadata_path, readonly=readonly, map_size=int(1e12))
         self.mapping = lmdb.open(mapping_path, readonly=readonly, map_size=int(1e12))
-        self.vecs = lmdb.open(vecs_path, readonly=readonly, map_size=int(1e12))
         self.index = hnswlib.Index(space=similarity, dim=dim)
         self.index.init_index(max_elements=max_elements, ef_construction=200, M=16)
 
@@ -54,13 +53,13 @@ class Database:
         """
         with self.mapping.begin(write=True) as mapping_txn, self.metadata.begin(
             write=True
-        ) as metadata_txn, self.vecs.begin(write=True) as vecs_txn:
+        ) as metadata_txn:
             idx_id = self.index.get_current_count().to_bytes(4, "big")
-            mapping_txn.put(key.encode("utf-8"), idx_id)
-            vecs_txn.put(idx_id, bytes(vector))
-            self.index.add_items(vector)
-            if metadata:
-                metadata_txn.put(key.encode("utf-8"), msgpack.packb(metadata))
+            mapping_txn.put(idx_id, key.encode("utf-8"))
+            self.index.add_items([vector])
+            metadata = metadata or {}
+            metadata = {**metadata, "__vec__": vector.tobytes(), "__idx__": idx_id}
+            metadata_txn.put(key.encode("utf-8"), msgpack.packb(metadata))
 
     def __setitem__(self, key: str, val: Union[List, Tuple]):
         if isinstance(val, tuple):
@@ -70,26 +69,33 @@ class Database:
         self.add(key, vector, metadata)
 
     def __getitem__(self, key: str) -> List:
-        with self.mapping.begin() as mapping_txn, self.vecs.begin() as vecs_txn, self.metadata.begin() as metadata_txn:
-            idx_id = mapping_txn.get(key.encode("utf-8"))
-            if not idx_id:
-                raise KeyError(key)
+        with self.metadata.begin() as metadata_txn:
             metadata = metadata_txn.get(key.encode("utf-8"))
-            if metadata:
-                metadata = msgpack.unpackb(metadata)
-            return vecs_txn.get(idx_id), metadata
+            if not metadata:
+                raise KeyError(key)
+            metadata = msgpack.unpackb(metadata)
+            vector = np.frombuffer(metadata["__vec__"])
+            del metadata["__vec__"]
+            del metadata["__idx__"]
+            if metadata == {}:
+                metadata = None
+            return vector, metadata
 
     def __contains__(self, key: str) -> bool:
-        with self.mapping.begin() as mapping_txn:
-            return bool(mapping_txn.get(key.encode("utf-8")))
+        with self.metadata.begin() as metadata_txn:
+            return bool(metadata_txn.get(key.encode("utf-8")))
 
     def __delitem__(self, key: str):
-        with self.mapping.begin(write=True) as mapping_txn, self.vecs.begin(
+        with self.mapping.begin(write=True) as mapping_txn, self.metadata.begin(
             write=True
-        ) as vecs_txn, self.metadata.begin(write=True) as metadata_txn:
-            idx_id = mapping_txn.get(key.encode("utf-8"))
-            mapping_txn.delete(key.encode("utf-8"))
-            vecs_txn.delete(idx_id)
+        ) as metadata_txn:
+            metadata = metadata_txn.get(key.encode("utf-8"))
+            if not metadata:
+                raise KeyError(key)
+            metadata = msgpack.unpackb(metadata)
+            idx_id = metadata["__idx__"]
+
+            mapping_txn.delete(idx_id)
             self.index.mark_deleted(int.from_bytes(idx_id, "big"))
             metadata_txn.delete(key.encode("utf-8"))
 
