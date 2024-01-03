@@ -31,6 +31,13 @@ def test_overall_functionality():
         assert db["test2"][1]["foo"] == "bar"
         assert len(db) == 2
 
+        for key, vector, metadata in db:
+            assert [key, vector] is not None
+            assert key in ["test", "test2"]
+            if key == "test2":
+                assert metadata is not None
+                assert metadata["foo"] == "bar"
+
         result = db.search(np.array([1.1, 1.0, 1.0, 1.0, 1.0]), k=1)
         assert result is not None
         key, vector, distance, metadata = result.__next__()
