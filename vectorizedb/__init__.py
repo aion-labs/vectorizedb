@@ -110,6 +110,19 @@ class Database:
         with self.metadata.begin() as metadata_txn:
             return bool(metadata_txn.get(key.encode("utf-8")))
 
+    def __iter__(self):
+        with self.mapping.begin() as mapping_txn, self.metadata.begin() as metadata_txn:
+            with mapping_txn.cursor() as cursor:
+                for _, key in cursor:
+                    metadata = metadata_txn.get(key)
+                    metadata = msgpack.unpackb(metadata)
+                    vector = np.frombuffer(metadata["__vec__"])
+                    del metadata["__vec__"]
+                    del metadata["__idx__"]
+                    if metadata == {}:
+                        metadata = None
+                    yield key.decode("utf-8"), vector, metadata
+
     def __delitem__(self, key: str):
         with self.mapping.begin(write=True) as mapping_txn, self.metadata.begin(
             write=True
