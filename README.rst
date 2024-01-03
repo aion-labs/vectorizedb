@@ -52,6 +52,15 @@ Usage
     # Check if a key exists in the database
     exists = "sample_key" in db
 
+
+**Iterating Through Data**
+
+.. code-block:: python
+
+    # Iterate through all keys, vectors and metadata in the database
+    for key, vector, metadata in db:
+        print(key, metadata)
+
 **Deleting Data**
 
 .. code-block:: python
