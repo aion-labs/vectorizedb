@@ -65,3 +65,30 @@ def test_resizing():
         for i in range(db_size):
             db[f"test{i}"] = np.random.rand(5)
         assert len(db) == db_size
+
+
+def test_reloading():
+    db_size = 180
+    resize_buffer_size = 5
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        db_path = os.path.join(temp_dir, "test_db")
+        db = Database(db_path, dim=5, resize_buffer_size=resize_buffer_size)
+        for i in range(db_size - 1):
+            db[f"test{i}"] = np.random.rand(5)
+
+        db[f"test{db_size - 1}"] = np.random.rand(5), {"foo": "bar"}
+        vec, metadata = db[f"test{db_size - 1}"]
+
+        assert len(db) == db_size
+        assert vec is not None
+        assert metadata["foo"] == "bar"
+
+        db.close()
+
+        db = Database(db_path, dim=5, resize_buffer_size=resize_buffer_size)
+
+        assert db[f"test{db_size - 1}"] is not None
+        assert len(db) == db_size
+        assert vec is not None
+        assert metadata["foo"] == "bar"
