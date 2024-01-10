@@ -196,3 +196,8 @@ class Database:
     def __len__(self) -> int:
         with self.mapping.begin() as mapping_txn:
             return mapping_txn.stat()["entries"]
+
+    def close(self):
+        self.sync()
+        self.mapping.close()
+        self.metadata.close()
