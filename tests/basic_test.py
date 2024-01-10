@@ -92,3 +92,9 @@ def test_reloading():
         assert len(db) == db_size
         assert vec is not None
         assert metadata["foo"] == "bar"
+
+        db["foo"] = np.random.rand(5), {"bar": "baz"}
+        vec, metadata = db["foo"]
+        assert len(db) == db_size + 1
+        assert vec is not None
+        assert metadata["bar"] == "baz"
