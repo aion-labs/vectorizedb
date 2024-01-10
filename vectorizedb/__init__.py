@@ -32,7 +32,6 @@ class Database:
 
         metadata_path = bytes(path / "metadata")
         mapping_path = bytes(path / "mapping")
-        vecs_path = bytes(path / "vecs")
 
         self.metadata = lmdb.open(metadata_path, readonly=readonly, map_size=int(1e12))
         self.mapping = lmdb.open(mapping_path, readonly=readonly, map_size=int(1e12))
