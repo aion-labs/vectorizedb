@@ -25,7 +25,7 @@ Usage
     from vectorizedb import Database
 
     # Initialize a new database
-    db = Database(path="path/to/db", dim=128, readonly=False, similarity="cosine", max_elements=1000000)
+    db = Database(path="path/to/db", dim=128, readonly=False, similarity="cosine")
 
 **Adding Data**
 
