@@ -14,7 +14,7 @@ class Database:
         dim: int,
         readonly: bool = False,
         similarity: str = "cosine",
-        max_elements: int = 1000000,
+        resize_buffer_size: int = 10000,
     ):
         """
         Initialize a Database object.
@@ -24,19 +24,32 @@ class Database:
             dim (int): The dimensionality of the vectors to be stored.
             readonly (bool, optional): Whether to open the database in read-only mode. Defaults to False.
             similarity (str, optional): The similarity metric to use for indexing. Defaults to "cosine".
-            max_elements (int, optional): The maximum number of elements that can be indexed. Defaults to 1000000.
+            resize_buffer_size (int, optional): The number of elements to add to the index when resizing. Defaults to 10000.
         """
 
-        path = pathlib.Path(path)
-        path.mkdir(parents=True, exist_ok=True)
+        self.path = pathlib.Path(path)
+        self.path.mkdir(parents=True, exist_ok=True)
 
-        metadata_path = bytes(path / "metadata")
-        mapping_path = bytes(path / "mapping")
+        metadata_path = bytes(self.path / "metadata")
+        mapping_path = bytes(self.path / "mapping")
+        index_path = self.path / "index.tree"
 
         self.metadata = lmdb.open(metadata_path, readonly=readonly, map_size=int(1e12))
         self.mapping = lmdb.open(mapping_path, readonly=readonly, map_size=int(1e12))
+
+        self.max_elements = (
+            self.mapping.stat()["entries"] + resize_buffer_size
+        ) or resize_buffer_size
+        self.resize_buffer_size = resize_buffer_size
+
         self.index = hnswlib.Index(space=similarity, dim=dim)
-        self.index.init_index(max_elements=max_elements, ef_construction=200, M=16)
+        if index_path.exists():
+            self.index.load_index(str(index_path), max_elements=self.max_elements)
+            self.sync()
+        else:
+            self.index.init_index(
+                max_elements=self.max_elements, ef_construction=200, M=16
+            )
 
     def add(self, key: str, vector: np.array, metadata: Optional[Dict] = None):
         """
@@ -54,11 +67,55 @@ class Database:
             write=True
         ) as metadata_txn:
             idx_id = self.index.get_current_count().to_bytes(4, "big")
+            try:
+                self.index.add_items([vector])
+            except RuntimeError as e:
+                if "exceeds the specified limit" in str(e):
+                    self._resize()
+                    self.index.add_items([vector])
+                else:
+                    raise e
+
             mapping_txn.put(idx_id, key.encode("utf-8"))
-            self.index.add_items([vector])
             metadata = metadata or {}
             metadata = {**metadata, "__vec__": vector.tobytes(), "__idx__": idx_id}
             metadata_txn.put(key.encode("utf-8"), msgpack.packb(metadata))
+
+    def sync(self):
+        """
+        Sync the database to disk.
+
+        Returns:
+            None
+        """
+        len_metadata = self.metadata.stat()["entries"]
+        len_mapping = self.mapping.stat()["entries"]
+        len_index = self.index.get_current_count()
+
+        if len_metadata != len_mapping:
+            raise RuntimeError(
+                f"Metadata and mapping databases are out of sync. {len_metadata} != {len_mapping}"
+            )
+
+        if len_metadata != len_index:
+            self.index.resize_index(len_metadata + self.resize_buffer_size)
+            with self.mapping.begin() as mapping_txn, self.metadata.begin() as metadata_txn:
+                with mapping_txn.cursor() as cursor:
+                    for idx_id, key in cursor:
+                        metadata = metadata_txn.get(key)
+                        metadata = msgpack.unpackb(metadata)
+                        idx_id = metadata["__idx__"]
+                        vec = np.frombuffer(metadata["__vec__"])
+                        self.index.add_items([vec], [int.from_bytes(idx_id, "big")])
+
+        self.mapping.sync()
+        self.metadata.sync()
+        self.index.save_index(str(self.path / "index.tree"))
+
+    def _resize(self):
+        self.sync()
+        self.max_elements *= 2
+        self.index.resize_index(self.max_elements)
 
     def search(
         self, vector: np.array, k: int = 10
