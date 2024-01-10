@@ -1,5 +1,6 @@
-# Data folder
+# Private files
 data/
+private_notebooks/
 
 # macOS stuff
 .DS_Store
