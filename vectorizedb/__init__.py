@@ -25,6 +25,7 @@ class Database:
             readonly (bool, optional): Whether to open the database in read-only mode. Defaults to False.
             similarity (str, optional): The similarity metric to use for indexing. Defaults to "cosine".
             resize_buffer_size (int, optional): The number of elements to add to the index when resizing. Defaults to 10000.
+            dtype (type, optional): The data type of the vectors to be stored. Defaults to np.float32.
         """
 
         self.path = pathlib.Path(path)
@@ -109,7 +110,7 @@ class Database:
                         metadata = metadata_txn.get(key)
                         metadata = msgpack.unpackb(metadata)
                         idx_id = metadata["__idx__"]
-                        vec = np.frombuffer(metadata["__vec__"])
+                        vec = np.frombuffer(metadata["__vec__"], dtype=np.float32)
                         self.index.add_items([vec], [int.from_bytes(idx_id, "big")])
 
         self.mapping.sync()
@@ -142,7 +143,7 @@ class Database:
                     key = mapping_txn.get(idx_id)
                     metadata = metadata_txn.get(key)
                     metadata = msgpack.unpackb(metadata)
-                    vector = np.frombuffer(metadata["__vec__"])
+                    vector = np.frombuffer(metadata["__vec__"], dtype=np.float32)
                     del metadata["__vec__"]
                     del metadata["__idx__"]
                     yield key.decode("utf-8"), vector, distance, metadata
@@ -164,7 +165,7 @@ class Database:
                 if not metadata:
                     raise KeyError(key)
                 metadata = msgpack.unpackb(metadata)
-                vector = np.frombuffer(metadata["__vec__"])
+                vector = np.frombuffer(metadata["__vec__"], dtype=np.float32)
                 del metadata["__vec__"]
                 del metadata["__idx__"]
                 if metadata == {}:
@@ -188,7 +189,7 @@ class Database:
                 for _, key in cursor:
                     metadata = metadata_txn.get(key)
                     metadata = msgpack.unpackb(metadata)
-                    vector = np.frombuffer(metadata["__vec__"])
+                    vector = np.frombuffer(metadata["__vec__"], dtype=np.float32)
                     del metadata["__vec__"]
                     del metadata["__idx__"]
                     if metadata == {}:
