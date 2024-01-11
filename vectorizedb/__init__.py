@@ -63,23 +63,27 @@ class Database:
         Returns:
             None
         """
-        with self.mapping.begin(write=True) as mapping_txn, self.metadata.begin(
-            write=True
-        ) as metadata_txn:
-            idx_id = self.index.get_current_count().to_bytes(4, "big")
-            try:
-                self.index.add_items([vector])
-            except RuntimeError as e:
-                if "exceeds the specified limit" in str(e):
-                    self._resize()
+        try:
+            with self.mapping.begin(write=True) as mapping_txn, self.metadata.begin(
+                write=True
+            ) as metadata_txn:
+                idx_id = self.index.get_current_count().to_bytes(4, "big")
+                try:
                     self.index.add_items([vector])
-                else:
-                    raise e
+                except RuntimeError as e:
+                    if "exceeds the specified limit" in str(e):
+                        self._resize()
+                        self.index.add_items([vector])
+                    else:
+                        raise e
 
-            mapping_txn.put(idx_id, key.encode("utf-8"))
-            metadata = metadata or {}
-            metadata = {**metadata, "__vec__": vector.tobytes(), "__idx__": idx_id}
-            metadata_txn.put(key.encode("utf-8"), msgpack.packb(metadata))
+                mapping_txn.put(idx_id, key.encode("utf-8"))
+                metadata = metadata or {}
+                metadata = {**metadata, "__vec__": vector.tobytes(), "__idx__": idx_id}
+                metadata_txn.put(key.encode("utf-8"), msgpack.packb(metadata))
+        except lmdb.Error as e:
+            if "closed" in str(e):
+                raise RuntimeError("Database is closed")
 
     def sync(self):
         """
@@ -131,16 +135,20 @@ class Database:
             List[Tuple[str, np.array, float, Dict]]: A list of tuples containing the key, vector, distance, and metadata of the nearest neighbors.
         """
         idx_ids, distances = self.index.knn_query(vector, k=k)
-        with self.mapping.begin() as mapping_txn, self.metadata.begin() as metadata_txn:
-            for idx_id, distance in zip(idx_ids[0], distances[0]):
-                idx_id = int(idx_id).to_bytes(4, "big")
-                key = mapping_txn.get(idx_id)
-                metadata = metadata_txn.get(key)
-                metadata = msgpack.unpackb(metadata)
-                vector = np.frombuffer(metadata["__vec__"])
-                del metadata["__vec__"]
-                del metadata["__idx__"]
-                yield key.decode("utf-8"), vector, distance, metadata
+        try:
+            with self.mapping.begin() as mapping_txn, self.metadata.begin() as metadata_txn:
+                for idx_id, distance in zip(idx_ids[0], distances[0]):
+                    idx_id = int(idx_id).to_bytes(4, "big")
+                    key = mapping_txn.get(idx_id)
+                    metadata = metadata_txn.get(key)
+                    metadata = msgpack.unpackb(metadata)
+                    vector = np.frombuffer(metadata["__vec__"])
+                    del metadata["__vec__"]
+                    del metadata["__idx__"]
+                    yield key.decode("utf-8"), vector, distance, metadata
+        except lmdb.Error as e:
+            if "closed" in str(e):
+                raise RuntimeError("Database is closed")
 
     def __setitem__(self, key: str, val: Union[List, Tuple]):
         if isinstance(val, tuple):
@@ -150,21 +158,29 @@ class Database:
         self.add(key, vector, metadata)
 
     def __getitem__(self, key: str) -> List:
-        with self.metadata.begin() as metadata_txn:
-            metadata = metadata_txn.get(key.encode("utf-8"))
-            if not metadata:
-                raise KeyError(key)
-            metadata = msgpack.unpackb(metadata)
-            vector = np.frombuffer(metadata["__vec__"])
-            del metadata["__vec__"]
-            del metadata["__idx__"]
-            if metadata == {}:
-                metadata = None
-            return vector, metadata
+        try:
+            with self.metadata.begin() as metadata_txn:
+                metadata = metadata_txn.get(key.encode("utf-8"))
+                if not metadata:
+                    raise KeyError(key)
+                metadata = msgpack.unpackb(metadata)
+                vector = np.frombuffer(metadata["__vec__"])
+                del metadata["__vec__"]
+                del metadata["__idx__"]
+                if metadata == {}:
+                    metadata = None
+                return vector, metadata
+        except lmdb.Error as e:
+            if "closed" in str(e):
+                raise RuntimeError("Database is closed")
 
     def __contains__(self, key: str) -> bool:
-        with self.metadata.begin() as metadata_txn:
-            return bool(metadata_txn.get(key.encode("utf-8")))
+        try:
+            with self.metadata.begin() as metadata_txn:
+                return bool(metadata_txn.get(key.encode("utf-8")))
+        except lmdb.Error as e:
+            if "closed" in str(e):
+                raise RuntimeError("Database is closed")
 
     def __iter__(self):
         with self.mapping.begin() as mapping_txn, self.metadata.begin() as metadata_txn:
@@ -180,18 +196,22 @@ class Database:
                     yield key.decode("utf-8"), vector, metadata
 
     def __delitem__(self, key: str):
-        with self.mapping.begin(write=True) as mapping_txn, self.metadata.begin(
-            write=True
-        ) as metadata_txn:
-            metadata = metadata_txn.get(key.encode("utf-8"))
-            if not metadata:
-                raise KeyError(key)
-            metadata = msgpack.unpackb(metadata)
-            idx_id = metadata["__idx__"]
+        try:
+            with self.mapping.begin(write=True) as mapping_txn, self.metadata.begin(
+                write=True
+            ) as metadata_txn:
+                metadata = metadata_txn.get(key.encode("utf-8"))
+                if not metadata:
+                    raise KeyError(key)
+                metadata = msgpack.unpackb(metadata)
+                idx_id = metadata["__idx__"]
 
-            mapping_txn.delete(idx_id)
-            self.index.mark_deleted(int.from_bytes(idx_id, "big"))
-            metadata_txn.delete(key.encode("utf-8"))
+                mapping_txn.delete(idx_id)
+                self.index.mark_deleted(int.from_bytes(idx_id, "big"))
+                metadata_txn.delete(key.encode("utf-8"))
+        except lmdb.Error as e:
+            if "closed" in str(e):
+                raise RuntimeError("Database is closed")
 
     def __len__(self) -> int:
         with self.mapping.begin() as mapping_txn:
