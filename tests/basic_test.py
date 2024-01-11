@@ -22,12 +22,14 @@ def test_overall_functionality():
         assert db["test"] is not None
         assert db["test"][0] is not None
         assert db["test"][0].shape == (5,)
+        assert np.sum(db["test"][0]) == 10.0
         assert db["test"][1] is None
 
         db["test2"] = (np.array([1.0, 1.0, 1.0, 1.0, 1.0]), {"foo": "bar"})
         assert "test2" in db
         assert db["test2"] is not None
         assert db["test2"][0].shape == (5,)
+        assert np.sum(db["test2"][0]) == 5.0
         assert db["test2"][1] is not None
         assert db["test2"][1]["foo"] == "bar"
         assert len(db) == 2
