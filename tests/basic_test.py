@@ -93,31 +93,35 @@ def test_resizing():
 def test_reloading():
     db_size = 180
     resize_buffer_size = 5
+    dim = 384
 
     with tempfile.TemporaryDirectory() as temp_dir:
         db_path = os.path.join(temp_dir, "test_db")
-        db = Database(db_path, dim=5, resize_buffer_size=resize_buffer_size)
+        db = Database(db_path, dim=dim, resize_buffer_size=resize_buffer_size)
         for i in range(db_size - 1):
-            db[f"test{i}"] = np.random.rand(5)
+            db[f"test{i}"] = np.random.rand(dim)
 
-        db[f"test{db_size - 1}"] = np.random.rand(5), {"foo": "bar"}
+        db[f"test{db_size - 1}"] = np.random.rand(dim), {"foo": "bar"}
         vec, metadata = db[f"test{db_size - 1}"]
 
         assert len(db) == db_size
         assert vec is not None
+        assert vec.shape == (dim,)
         assert metadata["foo"] == "bar"
 
         db.close()
 
-        db = Database(db_path, dim=5, resize_buffer_size=resize_buffer_size)
+        db = Database(db_path, dim=dim, resize_buffer_size=resize_buffer_size)
 
         assert db[f"test{db_size - 1}"] is not None
         assert len(db) == db_size
         assert vec is not None
+        assert vec.shape == (dim,)
         assert metadata["foo"] == "bar"
 
-        db["foo"] = np.random.rand(5), {"bar": "baz"}
+        db["foo"] = np.random.rand(dim), {"bar": "baz"}
         vec, metadata = db["foo"]
         assert len(db) == db_size + 1
         assert vec is not None
+        assert vec.shape == (dim,)
         assert metadata["bar"] == "baz"
