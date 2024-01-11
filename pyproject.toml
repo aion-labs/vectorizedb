@@ -5,6 +5,7 @@ description = "VectorizeDB is a database for vectorized data and metadata, allow
 authors = ["JJ Ben-Joseph <jj@tensorspace.ai>", "Yair Benita <yair@aionlabs.com>"]
 license = "Apache"
 readme = "README.rst"
+homepage = "https://github.com/aion-labs/vectorizedb"
 
 [tool.poetry.dependencies]
 python = ">3.9"
