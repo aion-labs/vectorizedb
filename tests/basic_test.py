@@ -55,6 +55,28 @@ def test_overall_functionality():
         assert "test3" not in db
         assert len(db) == 1
 
+        db.close()
+
+        try:
+            db["test2"]
+        except RuntimeError as e:
+            assert "closed" in str(e)
+
+        try:
+            db["test3"] = np.array([1.0, 1.0, 1.0, 1.0, 1.0])
+        except RuntimeError as e:
+            assert "closed" in str(e)
+
+        try:
+            del db["test2"]
+        except RuntimeError as e:
+            assert "closed" in str(e)
+
+        try:
+            "test2" in db
+        except RuntimeError as e:
+            assert "closed" in str(e)
+
 
 def test_resizing():
     db_size = 180
