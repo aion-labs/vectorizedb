@@ -6,6 +6,18 @@ authors = ["JJ Ben-Joseph <jj@tensorspace.ai>", "Yair Benita <yair@aionlabs.com>
 license = "Apache"
 readme = "README.rst"
 homepage = "https://github.com/aion-labs/vectorizedb"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3 :: Only",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Topic :: Database",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+  "Development Status :: 3 - Alpha"
+]
 
 [tool.poetry.dependencies]
 python = ">3.9"
