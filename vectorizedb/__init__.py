@@ -152,6 +152,16 @@ class Database:
                 raise RuntimeError("Database is closed")
 
     def __setitem__(self, key: str, val: Union[List, Tuple]):
+        """
+        Set the value for the given key.
+
+        Args:
+            key (str): The key to set the value for.
+            val (Union[List, Tuple]): The value to set. If a tuple is provided, it is assumed to be in the format (vector, metadata).
+
+        Returns:
+            None
+        """
         if isinstance(val, tuple):
             vector, metadata = val
         else:
@@ -159,6 +169,15 @@ class Database:
         self.add(key, vector, metadata)
 
     def __getitem__(self, key: str) -> List:
+        """
+        Retrieve the vector and metadata associated with the given key.
+
+        Args:
+            key (str): The key to retrieve the vector and metadata for.
+
+        Returns:
+            tuple: A tuple containing the vector and metadata. If the key is not found, a KeyError is raised.
+        """
         try:
             with self.metadata.begin() as metadata_txn:
                 metadata = metadata_txn.get(key.encode("utf-8"))
@@ -176,6 +195,18 @@ class Database:
                 raise RuntimeError("Database is closed")
 
     def __contains__(self, key: str) -> bool:
+        """
+        Check if the database contains a given key.
+
+        Args:
+            key (str): The key to check.
+
+        Returns:
+            bool: True if the key is found in the database, False otherwise.
+
+        Raises:
+            RuntimeError: If the database is closed.
+        """
         try:
             with self.metadata.begin() as metadata_txn:
                 return bool(metadata_txn.get(key.encode("utf-8")))
@@ -184,6 +215,13 @@ class Database:
                 raise RuntimeError("Database is closed")
 
     def __iter__(self):
+        """
+        Iterate over the keys, vectors, and metadata in the database.
+
+        Yields:
+            tuple: A tuple containing the key, vector (as a NumPy array of dtype float32),
+                   and metadata (as a dictionary).
+        """
         with self.mapping.begin() as mapping_txn, self.metadata.begin() as metadata_txn:
             with mapping_txn.cursor() as cursor:
                 for _, key in cursor:
@@ -197,6 +235,17 @@ class Database:
                     yield key.decode("utf-8"), vector, metadata
 
     def __delitem__(self, key: str):
+        """
+        Delete an item from the database.
+
+        Args:
+            key (str): The key of the item to be deleted.
+
+        Raises:
+            KeyError: If the key does not exist in the database.
+            RuntimeError: If the database is closed.
+
+        """
         try:
             with self.mapping.begin(write=True) as mapping_txn, self.metadata.begin(
                 write=True
@@ -215,10 +264,19 @@ class Database:
                 raise RuntimeError("Database is closed")
 
     def __len__(self) -> int:
+        """
+        Returns the number of entries in the database.
+
+        Returns:
+            int: The number of entries in the database.
+        """
         with self.mapping.begin() as mapping_txn:
             return mapping_txn.stat()["entries"]
 
     def close(self):
+        """
+        Closes the VectorizeDB instance. This method synchronizes any pending changes to disk.
+        """
         self.sync()
         self.mapping.close()
         self.metadata.close()
