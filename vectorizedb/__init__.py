@@ -51,6 +51,7 @@ class Database:
             self.index.init_index(
                 max_elements=self.max_elements, ef_construction=200, M=16
             )
+            self.sync()
 
     def add(self, key: str, vector: np.array, metadata: Optional[Dict] = None):
         """

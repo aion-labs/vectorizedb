@@ -130,3 +130,48 @@ def test_reloading():
         assert vec is not None
         assert vec.shape == (dim,)
         assert metadata["bar"] == "baz"
+
+
+def test_autorepair_when_db_is_inconsistent():
+    db_size = 180
+    resize_buffer_size = 200
+    dim = 384
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        db_path = os.path.join(temp_dir, "test_db")
+        db = Database(db_path, dim=dim, resize_buffer_size=resize_buffer_size)
+
+        for i in range(db_size - 1):
+            db[f"test{i}"] = np.float32(np.random.rand(dim))
+
+        db[f"test{db_size - 1}"] = np.float32(np.random.rand(dim)), {"foo": "bar"}
+        vec, metadata = db[f"test{db_size - 1}"]
+
+        assert len(db) == db_size
+        assert vec is not None
+        assert vec.shape == (dim,)
+        assert metadata["foo"] == "bar"
+
+        # Close the database with unsaved changes
+        db.mapping.close()
+        db.metadata.close()
+
+        db = Database(db_path, dim=dim, resize_buffer_size=resize_buffer_size)
+        assert len(db) == db_size
+        db["test-test"] = np.float32(np.random.rand(dim)), {"foo": "baz"}
+        vec, metadata = db["test-test"]
+        assert len(db) == db_size + 1
+        assert vec is not None
+        assert vec.shape == (dim,)
+        assert metadata["foo"] == "baz"
+
+        num_results = 3
+        for key, vector, distance, metadata in db.search(
+            np.random.rand(dim), k=num_results
+        ):
+            assert "test" in key
+            assert vector.shape == (dim,)
+            assert type(distance) == np.float32
+            assert metadata == {} or metadata["foo"] in ["bar", "baz"]
+            num_results -= 1
+        assert num_results == 0
