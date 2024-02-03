@@ -68,7 +68,7 @@ def test_overall_functionality():
             assert "closed" in str(e)
 
         try:
-            db["test3"] = np.array([1.0, 1.0, 1.0, 1.0, 1.0])
+            db["test3"] = np.array([1.0, 1.0, 1.0, 1.0, 1.0], dtype=np.float32)
         except RuntimeError as e:
             assert "closed" in str(e)
 
@@ -104,7 +104,7 @@ def test_reloading():
         db_path = os.path.join(temp_dir, "test_db")
         db = Database(db_path, dim=dim, resize_buffer_size=resize_buffer_size)
         for i in range(db_size - 1):
-            db[f"test{i}"] = np.random.rand(dim)
+            db[f"test{i}"] = np.float32(np.random.rand(dim))
 
         db[f"test{db_size - 1}"] = np.float32(np.random.rand(dim)), {"foo": "bar"}
         vec, metadata = db[f"test{db_size - 1}"]

@@ -64,6 +64,11 @@ class Database:
         Returns:
             None
         """
+        if vector.dtype != np.float32:
+            raise ValueError("Vector must be of type np.float32")
+        if len(vector.shape) != 1:
+            raise ValueError("Vector must be 1D")
+
         try:
             with self.mapping.begin(write=True) as mapping_txn, self.metadata.begin(
                 write=True
