@@ -44,6 +44,20 @@ def test_overall_functionality():
                 assert metadata is not None
                 assert metadata["foo"] == "bar"
 
+        assert "test" in db
+        db.update_vector("test", np.array([2.0, 2.0, 2.0, 3.0, 2.0], dtype=np.float32))
+        assert "test" in db
+        assert db["test"][0].shape == (5,)
+        assert np.sum(db["test"][0]) == 11.0
+        assert db.index.get_current_count() == 2
+        db.update_metadata("test", {"foo": "baz"})
+        assert "test" in db
+        assert db["test"][1]["foo"] == "baz"
+        db.update_metadata("test", {"foo": "booz", "bar": "baz"})
+        assert "test" in db
+        assert db["test"][1]["foo"] == "booz"
+        assert db["test"][1]["bar"] == "baz"
+
         result = db.search(np.array([1.1, 1.0, 1.0, 1.0, 1.0], dtype=np.float32), k=1)
         assert result is not None
         key, vector, distance, metadata = result.__next__()
