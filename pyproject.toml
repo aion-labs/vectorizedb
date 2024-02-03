@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "vectorizedb"
-version = "0.9.0"
+version = "1.0.0"
 description = "VectorizeDB is a database for vectorized data and metadata, allowing for fast similarity search and retrieval."
 authors = ["JJ Ben-Joseph <jj@tensorspace.ai>", "Yair Benita <yair@aionlabs.com>"]
 license = "Apache"
@@ -15,7 +15,7 @@ classifiers = [
   "Intended Audience :: Science/Research",
   "Topic :: Database",
   "Topic :: Scientific/Engineering :: Information Analysis",
-  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
 ]
 
 [tool.poetry.dependencies]
