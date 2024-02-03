@@ -52,6 +52,14 @@ Usage
     # Check if a key exists in the database
     exists = "sample_key" in db
 
+**Searching**
+
+.. code-block:: python
+
+    # Search for nearest neighbors of a vector
+    results = db.search(vector=np.random.rand(128), k=5)
+    for key, vector, distance, metadata in results:
+        print(key, distance, metadata)
 
 **Iterating Through Data**
 
@@ -61,21 +69,22 @@ Usage
     for key, vector, metadata in db:
         print(key, metadata)
 
+**Updating Data**
+
+.. code-block:: python
+
+    # Update a vector in the database
+    db.update_vector("sample_key", np.random.rand(128))
+
+    # Update metadata
+    db.update_metadata("sample_key", {"info": "updated metadata"})
+
 **Deleting Data**
 
 .. code-block:: python
 
     # Delete a vector from the database by key
     del db["sample_key"]
-
-**Searching**
-
-.. code-block:: python
-
-    # Search for nearest neighbors of a vector
-    results = db.search(vector=np.random.rand(128), k=5)
-    for key, vector, distance, metadata in results:
-        print(key, distance, metadata)
 
 **Database Length**
 
