@@ -92,6 +92,60 @@ class Database:
             if "closed" in str(e):
                 raise RuntimeError("Database is closed")
 
+    def update_metadata(self, key: str, metadata: Dict):
+        """
+        Update the metadata for the given key.
+
+        Args:
+            key (str): The key to update the metadata for.
+            metadata (Dict): The new metadata to associate with the key.
+
+        Returns:
+            None
+        """
+        try:
+            with self.metadata.begin(write=True) as metadata_txn:
+                old_metadata = metadata_txn.get(key.encode("utf-8"))
+                if not old_metadata:
+                    raise KeyError(key)
+                old_metadata = msgpack.unpackb(old_metadata)
+                old_metadata.update(metadata)
+                metadata_txn.put(key.encode("utf-8"), msgpack.packb(old_metadata))
+        except lmdb.Error as e:
+            if "closed" in str(e):
+                raise RuntimeError("Database is closed")
+
+    def update_vector(self, key: str, vector: np.array):
+        """
+        Update the vector for the given key.
+
+        Args:
+            key (str): The key to update the vector for.
+            vector (np.array): The new vector to associate with the key.
+
+        Returns:
+            None
+        """
+        if vector.dtype != np.float32:
+            raise ValueError("Vector must be of type np.float32")
+        if len(vector.shape) != 1:
+            raise ValueError("Vector must be 1D")
+
+        try:
+            with self.metadata.begin(write=True) as metadata_txn:
+                metadata = metadata_txn.get(key.encode("utf-8"))
+                if not metadata:
+                    raise KeyError(key)
+                metadata = msgpack.unpackb(metadata)
+                idx_id = metadata["__idx__"]
+                self.index.mark_deleted(int.from_bytes(idx_id, "big"))
+                self.index.add_items([vector], [int.from_bytes(idx_id, "big")])
+                metadata["__vec__"] = vector.tobytes()
+                metadata_txn.put(key.encode("utf-8"), msgpack.packb(metadata))
+        except lmdb.Error as e:
+            if "closed" in str(e):
+                raise RuntimeError("Database is closed")
+
     def sync(self):
         """
         Sync the database to disk.
