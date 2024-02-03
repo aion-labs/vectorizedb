@@ -69,6 +69,10 @@ class Database:
             raise ValueError("Vector must be of type np.float32")
         if len(vector.shape) != 1:
             raise ValueError("Vector must be 1D")
+        if key in self:
+            raise KeyError(
+                f"Key {key} already exists in the database. Use update_vector or update_metadata to modify it."
+            )
 
         try:
             with self.mapping.begin(write=True) as mapping_txn, self.metadata.begin(
@@ -83,7 +87,6 @@ class Database:
                         self.index.add_items([vector])
                     else:
                         raise e
-
                 mapping_txn.put(idx_id, key.encode("utf-8"))
                 metadata = metadata or {}
                 metadata = {**metadata, "__vec__": vector.tobytes(), "__idx__": idx_id}
