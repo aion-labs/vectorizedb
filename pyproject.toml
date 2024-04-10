@@ -4,7 +4,7 @@ version = "1.0.0"
 description = "VectorizeDB is a database for vectorized data and metadata, allowing for fast similarity search and retrieval."
 authors = ["JJ Ben-Joseph <jj@tensorspace.ai>", "Yair Benita <yair@aionlabs.com>"]
 license = "Apache"
-readme = "README.rst"
+readme = "README.md"
 homepage = "https://github.com/aion-labs/vectorizedb"
 classifiers = [
   "Programming Language :: Python :: 3",
